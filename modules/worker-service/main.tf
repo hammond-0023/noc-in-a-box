@@ -72,6 +72,8 @@ resource "aws_ecs_service" "this" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
+   wait_for_steady_state = true
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
