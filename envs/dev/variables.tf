@@ -13,3 +13,15 @@ variable "desired_count" {
   type    = number
   default = 1
 }
+
+variable "worker_desired_count" {
+  description = "Set to 0 to simulate a dead worker (stuck-queue drill)"
+  type        = number
+  default     = 1
+}
+
+variable "alert_email" {
+  description = "Email for alarm notifications. Leave empty to skip the subscription."
+  type        = string
+  default     = ""
+}

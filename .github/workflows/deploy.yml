@@ -48,14 +48,6 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.10.5"
-
-      # TEMPORARY: prints the identity claims GitHub sends, so we can compare
-      # them with the role's trust policy. Remove once OIDC works.
-      - name: Debug OIDC claims
-        run: |
-          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
-          echo "$TOKEN" | python3 -c "import sys,base64,json; p=sys.stdin.read().strip().split('.')[1]; p+='='*(-len(p)%4); c=json.loads(base64.urlsafe_b64decode(p)); print({k:c.get(k) for k in ('sub','aud','iss','repository','ref')})"
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
@@ -65,7 +57,7 @@ jobs:
         run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="region=${{ env.AWS_REGION }}"
 
       # The ECR repo must exist before the image can be pushed, and the image
-      # must exist before the ECS service can start. Hence the two-step apply.
+      # must exist before the ECS services can start. Hence the two-step apply.
       - name: Ensure ECR repo exists
         working-directory: ${{ env.TF_DIR }}
         run: terraform apply -input=false -auto-approve -target=aws_ecr_repository.app
@@ -89,7 +81,18 @@ jobs:
         run: |
           URL=$(terraform output -raw app_url)
           for i in $(seq 1 20); do
-            if curl -fsS "$URL/health"; then echo; echo "healthy"; exit 0; fi
+            if curl -fsS "$URL/health"; then echo; echo "healthy"; break; fi
+            [ "$i" = "20" ] && echo "service did not become healthy" && exit 1
             sleep 15
           done
-          echo "service did not become healthy" && exit 1
+          echo "--- order flow ---"
+          ORDER=$(curl -fsS -X POST "$URL/orders" -H "Content-Type: application/json" -d '{"item":"smoke-test"}')
+          echo "$ORDER"
+          ID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['order_id'])")
+          for i in $(seq 1 12); do
+            STATUS=$(curl -fsS "$URL/orders/$ID" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+            echo "order status: $STATUS"
+            [ "$STATUS" = "completed" ] && exit 0
+            sleep 5
+          done
+          echo "order was not completed by the worker" && exit 1
