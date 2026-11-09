@@ -25,3 +25,27 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "datadog_api_key" {
+  description = "Datadog API key (from the DD_API_KEY GitHub secret)"
+  type        = string
+  sensitive   = true
+}
+
+variable "datadog_app_key" {
+  description = "Datadog application key (from the DD_APP_KEY GitHub secret)"
+  type        = string
+  sensitive   = true
+}
+
+variable "datadog_api_url" {
+  description = "Datadog API URL for your site. EU: https://api.datadoghq.eu/  US1: https://api.datadoghq.com/"
+  type        = string
+  default     = "https://api.datadoghq.eu/"
+}
+
+variable "tuned_alerts" {
+  description = "false = deliberately noisy 5xx monitor (before). true = tuned monitor (after)."
+  type        = bool
+  default     = false
+}

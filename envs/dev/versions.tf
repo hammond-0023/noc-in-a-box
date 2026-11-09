@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    datadog = {
+      source  = "DataDog/datadog"
+      version = "~> 3.0"
+    }
   }
 
   # Bucket and region are supplied at init time:
@@ -27,4 +31,11 @@ provider "aws" {
       ManagedBy   = "terraform"
     }
   }
+}
+
+# Keys come from GitHub Actions secrets (TF_VAR_datadog_api_key / _app_key).
+provider "datadog" {
+  api_key = var.datadog_api_key
+  app_key = var.datadog_app_key
+  api_url = var.datadog_api_url
 }
